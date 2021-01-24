@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "functional": "cpp",
+        "iosfwd": "cpp",
+        "bitset": "cpp",
+        "string_view": "cpp",
+        "vector": "cpp",
+        "sstream": "cpp",
+        "chrono": "cpp"
+    }
+}

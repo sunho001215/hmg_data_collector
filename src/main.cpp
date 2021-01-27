@@ -3,6 +3,7 @@
 #include <time.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <cstdlib>
 #include "Eigen/Core"
 #include "Eigen/Geometry"
 #include <opencv2/core/eigen.hpp>
@@ -101,7 +102,6 @@ class DataCollector
         cv::Mat homography_1, homography_2, homography_3;
         cv::Mat front_mask, left_mask, right_mask;
         int data_num;
-        bool mask_gen;
         
     public:
         DataCollector(){
@@ -211,32 +211,15 @@ class DataCollector
             cv::eigen2cv(homo_3,homography_3);
 
             // mask
-            front_mask = cv::Mat(map_height, map_width,CV_8UC1);
-            right_mask = cv::Mat(map_height, map_width,CV_8UC1);
-            left_mask = cv::Mat(map_height, map_width,CV_8UC1);
-            
-            for(int i=0; i<map_height; i++)
-            {
-                for(int j=0; j<map_width; j++)
-                {
-                    if(i > map_width/2){
-                        right_mask.at<uchar>(j,i) = 255;
-                        left_mask.at<uchar>(j,i) = 0;
-                    }
-                    else{
-                        left_mask.at<uchar>(j,i) = 255;
-                        right_mask.at<uchar>(j,i) = 0;
-                    }
-                    if(j < map_height/2 + 150){
-                        front_mask.at<uchar>(j,i) = 255;
-                    }
-                    else{
-                        front_mask.at<uchar>(j,i) = 0;
-                    }
-                }
-            }
+            stringstream front_mask_path, right_mask_path, left_mask_path;
+            front_mask_path << ros::package::getPath("hmg_data_collector") << "/mask_img/front_mask.png";
+            right_mask_path << ros::package::getPath("hmg_data_collector") << "/mask_img/right_mask.png";
+            left_mask_path << ros::package::getPath("hmg_data_collector") << "/mask_img/left_mask.png";
 
-            mask_gen = false;
+            front_mask = cv::imread(front_mask_path.str(), 0);
+            right_mask = cv::imread(right_mask_path.str(), 0);
+            left_mask = cv::imread(left_mask_path.str(), 0);
+
             data_num = 1;
         }
 
@@ -286,7 +269,7 @@ void DataCollector::callback(const PointCloud::ConstPtr& pc_msg1, const PointClo
 
         if(x>=0 && x<=1 && y>=0 && y<=1){
             vector<double> temp;
-            temp.push_back(object.Name[0]);
+            temp.push_back(int(object.Name[0])-48);
             temp.push_back(x);
             temp.push_back(y);
             temp.push_back(object.l*map_scale/img_size);
@@ -385,25 +368,6 @@ void DataCollector::callback(const PointCloud::ConstPtr& pc_msg1, const PointClo
     cv_ptr = cv_bridge::toCvCopy(img_msg3, sensor_msgs::image_encodings::BGR8);
     cv::warpPerspective(cv_ptr->image,Camera_BEV_left,homography_3, cv::Size(map_height, map_width));
 
-    if(mask_gen == false){
-        mask_gen = true;
-        for(int i=0; i<map_height; i++)
-        {
-            for(int j=0; j<map_width; j++)
-            {
-                if(Camera_BEV_front.at<Vec3b>(j,i)[0] == 0 && Camera_BEV_front.at<Vec3b>(j,i)[1] == 0 && Camera_BEV_front.at<Vec3b>(j,i)[2] == 0){
-                    front_mask.at<uchar>(j,i) = 0;
-                }
-                if(Camera_BEV_right.at<Vec3b>(j,i)[0] == 0 && Camera_BEV_right.at<Vec3b>(j,i)[1] == 0 && Camera_BEV_right.at<Vec3b>(j,i)[2] == 0){
-                    right_mask.at<uchar>(j,i) = 0;
-                }
-                if(Camera_BEV_left.at<Vec3b>(j,i)[0] == 0 && Camera_BEV_left.at<Vec3b>(j,i)[1] == 0 && Camera_BEV_left.at<Vec3b>(j,i)[2] == 0){
-                    left_mask.at<uchar>(j,i) = 0;
-                }
-            }
-        }
-    }
-
     Camera_BEV_right.copyTo(Image_BEV_map, right_mask);
     Camera_BEV_left.copyTo(Image_BEV_map, left_mask);
     Camera_BEV_front.copyTo(Image_BEV_map, front_mask);
@@ -415,7 +379,7 @@ void DataCollector::callback(const PointCloud::ConstPtr& pc_msg1, const PointClo
     ofstream out_object(save_path_object.str());
     
     for(int i=0; i<output_data.size(); i++){
-        out_object << output_data[i][0] << " " << output_data[i][1] << " " << output_data[i][2] << " " << output_data[i][3] << " " << output_data[i][4] << " " << output_data[i][5] << std::endl;
+        out_object << to_string(output_data[i][0]) << " " << to_string(output_data[i][1]) << " " << to_string(output_data[i][2]) << " " << to_string(output_data[i][3]) << " " << to_string(output_data[i][4]) << " " << to_string(output_data[i][5]) << std::endl;
     }
 
     stringstream save_path_lidar;
